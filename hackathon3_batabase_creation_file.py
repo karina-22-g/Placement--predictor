@@ -1,48 +1,89 @@
 import sqlite3
 import random
 
-# SQLite automatically closes connection using "with"
-with sqlite3.connect("university.db", timeout=30) as conn:
+# -----------------------------
+# CONNECT DATABASE
+# -----------------------------
+conn = sqlite3.connect("university.db")
+cursor = conn.cursor()
 
-    cursor = conn.cursor()
+# -----------------------------
+# CREATE TABLE
+# -----------------------------
+cursor.execute("DROP TABLE IF EXISTS students")
 
-    # Drop table if it exists (prevents locking problems)
-    cursor.execute("DROP TABLE IF EXISTS students")
+cursor.execute("""
+CREATE TABLE students(
+    student_id INTEGER PRIMARY KEY,
+    cgpa REAL,
+    backlogs INTEGER,
+    internships INTEGER,
+    projects INTEGER,
+    aptitude_score INTEGER,
+    coding_score INTEGER,
+    communication INTEGER,
+    placed INTEGER
+)
+""")
 
-    # Create table
-    cursor.execute("""
-    CREATE TABLE students(
-        student_id INTEGER PRIMARY KEY,
-        attendance INTEGER,
-        study_hours INTEGER,
-        assignments INTEGER,
-        internal_marks INTEGER,
-        pass INTEGER
+# -----------------------------
+# GENERATE DATA
+# -----------------------------
+data = []
+
+for i in range(1000):
+
+    cgpa = round(random.uniform(5.0, 9.8), 2)
+    backlogs = random.randint(0, 10)
+    internships = random.randint(0, 10)
+    projects = random.randint(0, 10)
+    aptitude = random.randint(40, 100)
+    coding = random.randint(30, 100)
+    communication = random.randint(40, 100)
+
+    # -----------------------------
+    # REALISTIC SCORING
+    # -----------------------------
+    score = (
+        cgpa * 10
+        - backlogs * 12
+        + internships * 8
+        + projects * 6
+        + aptitude * 0.3
+        + coding * 0.5
+        + communication * 0.2
     )
-    """)
 
-    # Generate synthetic dataset
-    for i in range(1000):
+    # add randomness
+    score += random.uniform(-20, 20)
 
-        attendance = random.randint(40,100)
-        study_hours = random.randint(0,6)
-        assignments = random.randint(0,5)
-        internal_marks = random.randint(30,90)
+    data.append((i, cgpa, backlogs, internships, projects,
+                 aptitude, coding, communication, score))
 
-        score = attendance*0.3 + study_hours*5 + assignments*5 + internal_marks*0.4
+# -----------------------------
+# SORT BY SCORE (IMPORTANT)
+# -----------------------------
+data.sort(key=lambda x: x[-1], reverse=True)
 
-        result = 1 if score > 80 else 0
+# -----------------------------
+# ASSIGN 70% PLACED
+# -----------------------------
+final_data = []
 
-        cursor.execute(
-            "INSERT INTO students VALUES (?,?,?,?,?,?)",
-            (i, attendance, study_hours, assignments, internal_marks, result)
-        )
+cutoff = int(0.7 * len(data))
 
-    conn.commit()
+for i, row in enumerate(data):
+    placed = 1 if i < cutoff else 0
+    final_data.append(row[:-1] + (placed,))
 
-print("Dataset generated successfully in university.db")
+# -----------------------------
+# INSERT INTO DB
+# -----------------------------
+cursor.executemany("""
+INSERT INTO students VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+""", final_data)
 
+conn.commit()
+conn.close()
 
-
-from google.colab import files
-files.download("university.db")
+print("✅ Dataset created with 70% placed / 30% not placed")
