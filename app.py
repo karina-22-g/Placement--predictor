@@ -100,3 +100,81 @@ if st.sidebar.button("🚀 Predict"):
         strengths.append("Internships")
     else:
         weaknesses.append("Internships")
+
+
+
+import streamlit as st
+import pandas as pd
+import sqlite3
+import plotly.express as px
+
+# -----------------------------
+# PAGE CONFIG
+# -----------------------------
+st.set_page_config(page_title="Feature Graphs", layout="wide")
+
+st.title("📊 Feature vs Placement Analysis")
+
+# -----------------------------
+# LOAD DATA
+# -----------------------------
+conn = sqlite3.connect("university.db")
+df = pd.read_sql("SELECT * FROM students", conn)
+
+# -----------------------------
+# FUNCTION → LINE GRAPH
+# -----------------------------
+def plot_line(feature):
+    grouped = df.groupby(feature)["placed"].mean().reset_index()
+    grouped["placement_rate"] = grouped["placed"] * 100
+
+    fig = px.line(
+        grouped,
+        x=feature,
+        y="placement_rate",
+        markers=True,
+        title=f"{feature.upper()} vs Placement Rate (%)"
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
+
+# -----------------------------
+# FUNCTION → HISTOGRAM
+# -----------------------------
+def plot_hist(feature):
+    fig = px.histogram(
+        df,
+        x=feature,
+        color="placed",
+        barmode="overlay",
+        title=f"{feature.upper()} Distribution vs Placement"
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
+
+# -----------------------------
+# HISTOGRAMS
+# -----------------------------
+st.subheader("CGPA vs Placement")
+plot_hist("cgpa")
+
+st.subheader("Coding Score vs Placement")
+plot_hist("coding_score")
+
+st.subheader("Aptitude Score vs Placement")
+plot_hist("aptitude_score")
+
+st.subheader("Communication vs Placement")
+plot_hist("communication")
+
+# -----------------------------
+# LINE GRAPHS
+# -----------------------------
+st.subheader("Backlogs vs Placement")
+plot_line("backlogs")
+
+st.subheader("Internships vs Placement")
+plot_line("internships")
+
+st.subheader("Projects vs Placement")
+plot_line("projects")
