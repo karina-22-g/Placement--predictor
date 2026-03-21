@@ -122,59 +122,79 @@ conn = sqlite3.connect("university.db")
 df = pd.read_sql("SELECT * FROM students", conn)
 
 # -----------------------------
-# FUNCTION → LINE GRAPH
+# LINE GRAPH (3 FEATURES IN ONE)
 # -----------------------------
-def plot_line(feature):
-    grouped = df.groupby(feature)["placed"].mean().reset_index()
-    grouped["placement_rate"] = grouped["placed"] * 100
+st.subheader("📈 Backlogs, Internships, Projects vs Placement")
 
-    fig = px.line(
-        grouped,
-        x=feature,
-        y="placement_rate",
-        markers=True,
-        title=f"{feature.upper()} vs Placement Rate (%)"
-    )
+features_line = ["backlogs", "internships", "projects"]
+combined = pd.DataFrame()
 
-    st.plotly_chart(fig, use_container_width=True)
+for feature in features_line:
+    temp = df.groupby(feature)["placed"].mean().reset_index()
+    temp["placement_rate"] = temp["placed"] * 100
+    temp["feature"] = feature
+    temp.rename(columns={feature: "value"}, inplace=True)
+    combined = pd.concat([combined, temp])
 
-# -----------------------------
-# FUNCTION → HISTOGRAM
-# -----------------------------
-def plot_hist(feature):
-    fig = px.histogram(
-        df,
-        x=feature,
-        color="placed",
-        barmode="overlay",
-        title=f"{feature.upper()} Distribution vs Placement"
-    )
+fig1 = px.line(
+    combined,
+    x="value",
+    y="placement_rate",
+    color="feature",
+    markers=True,
+    title="📈 Placement Trend for Key Features"
+)
 
-    st.plotly_chart(fig, use_container_width=True)
+fig1.update_layout(template="plotly_dark")
+
+st.plotly_chart(fig1, use_container_width=True)
 
 # -----------------------------
-# HISTOGRAMS
+# BAR GRAPH (COLORFUL + CLEAN)
 # -----------------------------
-st.subheader("CGPA vs Placement")
-plot_hist("cgpa")
+st.subheader("🎯 Key Features Impact on Placement")
 
-st.subheader("Coding Score vs Placement")
-plot_hist("coding_score")
+features_bar = ["cgpa", "coding_score", "aptitude_score", "communication"]
 
-st.subheader("Aptitude Score vs Placement")
-plot_hist("aptitude_score")
+# calculate averages
+df_grouped = df.groupby("placed")[features_bar].mean().reset_index()
 
-st.subheader("Communication vs Placement")
-plot_hist("communication")
+# reshape
+df_melted = df_grouped.melt(
+    id_vars="placed",
+    var_name="feature",
+    value_name="average_value"
+)
 
-# -----------------------------
-# LINE GRAPHS
-# -----------------------------
-st.subheader("Backlogs vs Placement")
-plot_line("backlogs")
+# rename labels for better understanding
+df_melted["placed"] = df_melted["placed"].map({0: "Not Placed", 1: "Placed"})
+df_melted["feature"] = df_melted["feature"].replace({
+    "cgpa": "CGPA",
+    "coding_score": "Coding",
+    "aptitude_score": "Aptitude",
+    "communication": "Communication"
+})
 
-st.subheader("Internships vs Placement")
-plot_line("internships")
+# colorful bar chart
+fig2 = px.bar(
+    df_melted,
+    x="feature",
+    y="average_value",
+    color="placed",
+    barmode="group",
+    text_auto=True,
+    title="🎯 Average Performance: Placed vs Not Placed",
+    color_discrete_map={
+        "Placed": "#00FFAA",       # green
+        "Not Placed": "#FF4B4B"    # red
+    }
+)
 
-st.subheader("Projects vs Placement")
-plot_line("projects")
+fig2.update_layout(
+    template="plotly_dark",
+    xaxis_title="Features",
+    yaxis_title="Average Score",
+    legend_title="Placement Status"
+)
+
+st.plotly_chart(fig2, use_container_width=True)
